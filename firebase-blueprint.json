@@ -1,0 +1,136 @@
+{
+  "entities": {
+    "Seller": {
+      "title": "Seller",
+      "description": "Registered seller profile with Stripe Connect account ID",
+      "type": "object",
+      "properties": {
+        "displayName": {
+          "type": "string",
+          "description": "Seller's public display name",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "stripeConnectAccountId": {
+          "type": "string",
+          "description": "Stripe Connect Express account ID",
+          "minLength": 5,
+          "maxLength": 100
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when seller was created"
+        }
+      },
+      "required": ["displayName", "stripeConnectAccountId", "createdAt"]
+    },
+    "Trade": {
+      "title": "Trade",
+      "description": "Local item sale escrow transaction",
+      "type": "object",
+      "properties": {
+        "sellerId": {
+          "type": "string",
+          "description": "ID of the seller document",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "sellerDisplayName": {
+          "type": "string",
+          "description": "Display name of the seller",
+          "maxLength": 100
+        },
+        "buyerEmail": {
+          "type": "string",
+          "format": "email",
+          "description": "Buyer's email address",
+          "minLength": 3,
+          "maxLength": 150
+        },
+        "itemName": {
+          "type": "string",
+          "description": "Name or title of the item being sold",
+          "minLength": 1,
+          "maxLength": 150
+        },
+        "price": {
+          "type": "number",
+          "description": "Item sale price in USD"
+        },
+        "platformFee": {
+          "type": "number",
+          "description": "Handoff protection fee (6%, min $2.00) paid by buyer"
+        },
+        "totalAmount": {
+          "type": "number",
+          "description": "Total amount charged to buyer (item price + platform fee)"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "paid", "confirmed", "released", "flagged", "cancelled", "refunded"],
+          "description": "Current lifecycle status of the trade"
+        },
+        "handoffCode": {
+          "type": "string",
+          "description": "4-digit secret code generated upon payment",
+          "pattern": "^[0-9]{4}$"
+        },
+        "stripePaymentIntentId": {
+          "type": "string",
+          "description": "Stripe PaymentIntent ID authorized with manual capture",
+          "maxLength": 150
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when trade was initiated"
+        },
+        "paidAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when buyer payment was authorized"
+        },
+        "confirmedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when handoff was verified by seller"
+        },
+        "cancelledAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when trade was cancelled"
+        },
+        "cancelledBy": {
+          "type": "string",
+          "enum": ["buyer", "seller", "admin"],
+          "description": "Party who initiated the trade cancellation"
+        },
+        "cancellationTimeFormatted": {
+          "type": "string",
+          "description": "Formatted time when cancellation occurred (e.g. 12:52 AM)"
+        },
+        "refundedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when trade was refunded after release"
+        }
+      },
+      "required": ["sellerId", "buyerEmail", "itemName", "price", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/sellers/{sellerId}": {
+      "schema": {
+        "$ref": "#/entities/Seller"
+      },
+      "description": "Collection of seller profiles"
+    },
+    "/trades/{tradeId}": {
+      "schema": {
+        "$ref": "#/entities/Trade"
+      },
+      "description": "Collection of trades between buyers and sellers"
+    }
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "name": "Handoff",
+  "description": "Set up a safe local sale. Your buyer pays through Stripe, and the payment is held until you both confirm the handoff.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

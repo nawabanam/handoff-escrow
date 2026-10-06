@@ -1,0 +1,53 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidSeller(data) {
+      return data.keys().hasAll(['displayName', 'stripeConnectAccountId', 'createdAt']) &&
+        data.keys().hasOnly(['displayName', 'stripeConnectAccountId', 'createdAt']) &&
+        data.displayName is string && data.displayName.size() > 0 && data.displayName.size() <= 100 &&
+        data.stripeConnectAccountId is string && data.stripeConnectAccountId.size() >= 5 && data.stripeConnectAccountId.size() <= 100;
+    }
+
+    function isValidTrade(data) {
+      return data.keys().hasAll(['sellerId', 'buyerEmail', 'itemName', 'price', 'status', 'createdAt']) &&
+        data.sellerId is string && data.sellerId.size() > 0 && data.sellerId.size() <= 128 &&
+        data.buyerEmail is string && data.buyerEmail.size() >= 3 && data.buyerEmail.size() <= 150 &&
+        data.itemName is string && data.itemName.size() > 0 && data.itemName.size() <= 150 &&
+        data.price is number && data.price > 0 && data.price <= 1000000 &&
+        data.status in ['pending', 'paid', 'confirmed', 'released', 'flagged', 'cancelled', 'refunded'];
+    }
+
+    // Sellers collection
+    match /sellers/{sellerId} {
+      allow get, list: if isValidId(sellerId);
+      allow create: if isValidId(sellerId) && isValidSeller(incoming());
+      allow update: if isValidId(sellerId) && isValidSeller(incoming());
+    }
+
+    // Trades collection
+    match /trades/{tradeId} {
+      allow get, list: if isValidId(tradeId);
+      allow create: if isValidId(tradeId) && isValidTrade(incoming()) && incoming().status == 'pending';
+      allow update: if isValidId(tradeId) && isValidTrade(incoming());
+    }
+  }
+}
