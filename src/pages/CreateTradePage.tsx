@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Seller, Trade, calculatePlatformFee } from '../types';
+import { TradeQRCode } from '../components/TradeQRCode';
 import {
   ShieldCheck,
   DollarSign,
@@ -234,6 +235,11 @@ export const CreateTradePage: React.FC<CreateTradePageProps> = ({ navigate }) =>
                 )}
               </button>
             </div>
+          </div>
+
+          {/* In-Person Trade QR Code */}
+          <div className="mb-6">
+            <TradeQRCode trade={createdTrade} initialType="pay" />
           </div>
 
           {/* Quick Action Navigation Buttons */}

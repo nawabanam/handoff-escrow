@@ -16,7 +16,10 @@ import {
   CreditCard,
   User,
   X,
-  RotateCcw
+  RotateCcw,
+  Download,
+  Users,
+  Mail
 } from 'lucide-react';
 
 interface AdminPageProps {
@@ -27,6 +30,9 @@ export const AdminPage: React.FC<AdminPageProps> = ({ navigate }) => {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+
+  const [activeTab, setActiveTab] = useState<'trades' | 'waitlist'>('trades');
+  const [waitlistLeads, setWaitlistLeads] = useState<any[]>([]);
 
   const [trades, setTrades] = useState<Trade[]>([]);
   const [loading, setLoading] = useState(false);
@@ -61,6 +67,18 @@ export const AdminPage: React.FC<AdminPageProps> = ({ navigate }) => {
 
       const data: Trade[] = await res.json();
       setTrades(data);
+
+      // Fetch waitlist leads
+      try {
+        const wlRes = await fetch('/api/admin/waitlist', {
+          headers: { Authorization: `Bearer ${pwd}` },
+        });
+        if (wlRes.ok) {
+          const wlData = await wlRes.json();
+          setWaitlistLeads(wlData);
+        }
+      } catch (e) {}
+
       setIsAuthenticated(true);
       sessionStorage.setItem('handoff_admin_pwd', pwd);
     } catch (err: any) {
@@ -69,6 +87,27 @@ export const AdminPage: React.FC<AdminPageProps> = ({ navigate }) => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const exportWaitlistCSV = () => {
+    if (waitlistLeads.length === 0) return;
+    const headers = ['Email', 'Source', 'City', 'Joined At'];
+    const rows = waitlistLeads.map(lead => [
+      `"${lead.email}"`,
+      `"${lead.source || 'landing'}"`,
+      `"${lead.city || ''}"`,
+      `"${new Date(lead.createdAt).toISOString()}"`,
+    ]);
+    const csvContent =
+      'data:text/csv;charset=utf-8,' +
+      [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `handoff_waitlist_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleLogin = (e: React.FormEvent) => {
@@ -197,32 +236,173 @@ export const AdminPage: React.FC<AdminPageProps> = ({ navigate }) => {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-            Trades & Escrow Review
+            {activeTab === 'trades' ? 'Trades & Escrow Review' : 'Waitlist Leads & Market Demand'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-500">
-            Manage transactions, review holds over 24 hours, and execute manual captures, cancellations, or post-release refunds.
+            {activeTab === 'trades'
+              ? 'Manage transactions, review holds over 24 hours, and execute manual captures, cancellations, or post-release refunds.'
+              : 'Track interested buyers and sellers on your pre-launch waitlist. Measure local market demand before opening live trades.'}
           </p>
         </div>
 
         <div className="flex items-center gap-2">
+          {activeTab === 'waitlist' && (
+            <button
+              onClick={exportWaitlistCSV}
+              disabled={waitlistLeads.length === 0}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold transition-all shadow-xs disabled:opacity-50 cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export CSV ({waitlistLeads.length})</span>
+            </button>
+          )}
           <button
             onClick={() => verifyAndLoad(password)}
             disabled={loading}
-            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors"
+            className="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
             title="Refresh"
           >
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
           <button
             onClick={handleLogout}
-            className="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 transition-colors"
+            className="text-xs font-semibold text-rose-600 hover:bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-200 transition-colors cursor-pointer"
           >
             Log Out
           </button>
         </div>
       </div>
 
-      {/* Filters and Search */}
+      {/* Main Mode Tabs */}
+      <div className="flex items-center gap-3 border-b border-slate-200 mb-6">
+        <button
+          onClick={() => setActiveTab('trades')}
+          className={`pb-3 px-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === 'trades'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <CreditCard className="w-4 h-4" />
+          <span>Escrow Trades ({trades.length})</span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab('waitlist')}
+          className={`pb-3 px-3 text-sm font-bold border-b-2 transition-all flex items-center gap-2 cursor-pointer ${
+            activeTab === 'waitlist'
+              ? 'border-blue-600 text-blue-600'
+              : 'border-transparent text-slate-500 hover:text-slate-800'
+          }`}
+        >
+          <Users className="w-4 h-4" />
+          <span>Waitlist Leads ({waitlistLeads.length})</span>
+          {waitlistLeads.length > 0 && (
+            <span className="bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 rounded-full font-bold">
+              {waitlistLeads.length} leads
+            </span>
+          )}
+        </button>
+      </div>
+
+      {/* Waitlist Tab View */}
+      {activeTab === 'waitlist' ? (
+        <div className="space-y-6">
+          {/* Summary Metric Cards */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Total Waitlist Signups
+              </span>
+              <div className="text-3xl font-extrabold text-slate-900 mt-1">
+                {waitlistLeads.length}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Verified potential traders</p>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Hero Signups
+              </span>
+              <div className="text-3xl font-extrabold text-blue-600 mt-1">
+                {waitlistLeads.filter(l => l.source === 'hero').length}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Above-the-fold conversions</p>
+            </div>
+
+            <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider block">
+                Bottom CTA Signups
+              </span>
+              <div className="text-3xl font-extrabold text-indigo-600 mt-1">
+                {waitlistLeads.filter(l => l.source === 'cta').length}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">Full-page readers</p>
+            </div>
+          </div>
+
+          {/* Waitlist Leads Table */}
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between">
+              <h3 className="font-bold text-slate-900 text-sm">
+                Subscriber Directory
+              </h3>
+              <span className="text-xs text-slate-500 font-mono">
+                {waitlistLeads.length} total entries
+              </span>
+            </div>
+
+            {waitlistLeads.length === 0 ? (
+              <div className="py-16 text-center text-slate-500">
+                <Mail className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                <p className="font-semibold text-slate-700">No waitlist subscribers yet</p>
+                <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
+                  Share your landing page link to begin collecting demand from local buyers and sellers.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold uppercase tracking-wider text-[10px]">
+                    <tr>
+                      <th className="px-6 py-3">Email Address</th>
+                      <th className="px-6 py-3">Conversion Source</th>
+                      <th className="px-6 py-3">Location / City</th>
+                      <th className="px-6 py-3">Subscribed At</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {waitlistLeads.map((lead, idx) => (
+                      <tr key={lead.id || idx} className="hover:bg-slate-50/70 transition-colors">
+                        <td className="px-6 py-3.5 font-semibold text-slate-900 font-mono">
+                          {lead.email}
+                        </td>
+                        <td className="px-6 py-3.5">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                            lead.source === 'hero'
+                              ? 'bg-blue-100 text-blue-800'
+                              : 'bg-indigo-100 text-indigo-800'
+                          }`}>
+                            {lead.source || 'landing'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-3.5 text-slate-600">
+                          {lead.city || '—'}
+                        </td>
+                        <td className="px-6 py-3.5 text-slate-500 font-mono">
+                          {lead.createdAt ? new Date(lead.createdAt).toLocaleString() : 'Recent'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Filters and Search */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 mb-6">
         {/* Filter Tabs */}
         <div className="flex items-center flex-wrap bg-slate-100 p-1 rounded-xl text-xs font-medium text-slate-600 gap-1">
@@ -547,6 +727,8 @@ export const AdminPage: React.FC<AdminPageProps> = ({ navigate }) => {
             </div>
           </div>
         </div>
+      )}
+      </>
       )}
     </div>
   );

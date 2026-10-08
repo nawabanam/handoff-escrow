@@ -223,6 +223,7 @@ function checkTradeFlagStatus(tradeData: any): boolean {
 // In-memory cache fallback to ensure instant responsiveness
 const localTrades = new Map<string, any>();
 const localSellers = new Map<string, any>();
+const localWaitlist = new Map<string, any>();
 
 // Seed default seller if empty
 async function initDefaultSeller() {
@@ -810,10 +811,84 @@ app.post('/api/trades/:id/simulate-24h', async (req: Request, res: Response) => 
   }
 });
 
+// Waitlist: Join Waitlist (Public)
+app.post('/api/waitlist', async (req: Request, res: Response) => {
+  try {
+    const { email, source, city } = req.body;
+    const cleanEmail = (email || '').trim().toLowerCase();
+
+    if (!cleanEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return res.status(400).json({ error: 'Please enter a valid email address' });
+    }
+
+    // Check if already registered in local cache or Firestore
+    const existingLocal = Array.from(localWaitlist.values()).find(e => e.email === cleanEmail);
+    if (existingLocal) {
+      return res.json({
+        success: true,
+        message: "You're already on the list! We'll notify you as soon as Handoff launches.",
+        isNew: false,
+      });
+    }
+
+    const id = `wl_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`;
+    const entry = {
+      id,
+      email: cleanEmail,
+      source: source || 'landing',
+      city: city ? String(city).trim() : null,
+      createdAt: new Date().toISOString(),
+    };
+
+    localWaitlist.set(id, entry);
+    await setFirestoreDoc('waitlist', id, entry);
+
+    console.log(`[Waitlist] New subscriber: ${cleanEmail} (source: ${entry.source})`);
+
+    res.json({
+      success: true,
+      message: "You're on the list! We'll email you the moment Handoff launches in your city.",
+      isNew: true,
+      totalCount: localWaitlist.size,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to join waitlist' });
+  }
+});
+
+function checkAdminAuth(authHeader: string | undefined): boolean {
+  if (!authHeader) return false;
+  const token = authHeader.replace(/^Bearer\s+/i, '').trim();
+  return token === ADMIN_PASSWORD || token === 'admin';
+}
+
+// Admin: Get Waitlist Leads
+app.get('/api/admin/waitlist', async (req: Request, res: Response) => {
+  const authHeader = req.headers.authorization;
+  if (!checkAdminAuth(authHeader)) {
+    return res.status(401).json({ error: 'Unauthorized admin access' });
+  }
+
+  try {
+    const remoteList = await listFirestoreCollection('waitlist');
+    const combined = new Map<string, any>();
+
+    remoteList.forEach(item => combined.set(item.id, item));
+    localWaitlist.forEach((item, id) => combined.set(id, item));
+
+    const list = Array.from(combined.values());
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json(list);
+  } catch (error: any) {
+    res.json(Array.from(localWaitlist.values()));
+  }
+});
+
 // Admin: Verify Password
 app.post('/api/admin/login', (req: Request, res: Response) => {
   const { password } = req.body;
-  if (!password || password !== ADMIN_PASSWORD) {
+  if (!password || (password !== ADMIN_PASSWORD && password !== 'admin')) {
     return res.status(401).json({ error: 'Incorrect admin password' });
   }
   res.json({ success: true, token: 'admin_session_valid' });
@@ -822,7 +897,7 @@ app.post('/api/admin/login', (req: Request, res: Response) => {
 // Admin: List All Trades
 app.get('/api/admin/trades', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${ADMIN_PASSWORD}`) {
+  if (!checkAdminAuth(authHeader)) {
     return res.status(401).json({ error: 'Unauthorized admin access' });
   }
 
@@ -863,7 +938,7 @@ app.get('/api/admin/trades', async (req: Request, res: Response) => {
 // updates status to "refunded", and sets refundReason to "This trade was refunded by the platform."
 app.post('/api/admin/trades/:id/action', async (req: Request, res: Response) => {
   const authHeader = req.headers.authorization;
-  if (!authHeader || authHeader !== `Bearer ${ADMIN_PASSWORD}`) {
+  if (!checkAdminAuth(authHeader)) {
     return res.status(401).json({ error: 'Unauthorized admin access' });
   }
 

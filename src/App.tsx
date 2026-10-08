@@ -7,6 +7,7 @@ import { ConfirmHandoffPage } from './pages/ConfirmHandoffPage';
 import { StatusPage } from './pages/StatusPage';
 import { AdminPage } from './pages/AdminPage';
 import { SellersPage } from './pages/SellersPage';
+import { LandingPage } from './pages/LandingPage';
 import { testConnection } from './lib/firebase';
 import { ShieldCheck, Lock, CheckCircle, Info } from 'lucide-react';
 
@@ -43,7 +44,10 @@ export default function App() {
   const renderCurrentPage = () => {
     const path = currentPath;
 
-    if (path === '/' || path === '') {
+    if (path === '/' || path === '' || path === '/landing') {
+      return <LandingPage navigate={navigate} />;
+    }
+    if (path === '/app' || path === '/create') {
       return <CreateTradePage navigate={navigate} />;
     }
     if (path === '/sellers') {
@@ -86,6 +90,13 @@ export default function App() {
     // Default fallback
     return <CreateTradePage navigate={navigate} />;
   };
+
+  const isLanding = currentPath === '/' || currentPath === '' || currentPath === '/landing';
+
+  // Landing page renders with its dedicated full-width header and footer (no double navbar)
+  if (isLanding) {
+    return <LandingPage navigate={navigate} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-blue-600 selection:text-white">

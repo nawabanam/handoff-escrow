@@ -49,5 +49,12 @@ service cloud.firestore {
       allow create: if isValidId(tradeId) && isValidTrade(incoming()) && incoming().status == 'pending';
       allow update: if isValidId(tradeId) && isValidTrade(incoming());
     }
+
+    // Waitlist collection (pre-launch demand validation)
+    match /waitlist/{entryId} {
+      allow get, list: if true;
+      allow create: if isValidId(entryId) && incoming().email is string && incoming().email.size() >= 3;
+      allow update, delete: if false;
+    }
   }
 }

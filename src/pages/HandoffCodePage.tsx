@@ -3,6 +3,7 @@ import { Trade } from '../types';
 import { db, handleFirestoreError, OperationType } from '../lib/firebase';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { CancelTradeButton } from '../components/CancelTradeButton';
+import { TradeQRCode } from '../components/TradeQRCode';
 import {
   ShieldCheck,
   CheckCircle2,
@@ -297,13 +298,17 @@ export const HandoffCodePage: React.FC<HandoffCodePageProps> = ({ tradeId, navig
 
       {/* Actions */}
       <div className="space-y-3">
-        <button
-          onClick={() => navigate(`/trade/${trade.id}/status`)}
-          className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-        >
-          <ExternalLink className="w-4 h-4" />
-          <span>View Real-Time Status Stepper</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigate(`/trade/${trade.id}/status`)}
+            className="flex-1 py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-xs sm:text-sm flex items-center justify-center gap-1.5 transition-colors shadow-xs"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>View Status Stepper</span>
+          </button>
+
+          <TradeQRCode trade={trade} compact={true} />
+        </div>
 
         {/* Cancel Trade Button (post-payment, pre-confirmation) per Item 2 */}
         {trade.status === 'paid' && (

@@ -44,6 +44,13 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, navigate }) => {
         {/* Navigation Actions */}
         <div className="flex items-center gap-2 sm:gap-3">
           <button
+            onClick={() => navigate('/')}
+            className="text-xs sm:text-sm font-semibold text-slate-600 hover:text-blue-600 px-3 py-1.5 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            Waitlist
+          </button>
+
+          <button
             onClick={() => navigate('/sellers')}
             className={`text-xs sm:text-sm font-medium px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 ${
               currentPath === '/sellers'
@@ -56,7 +63,7 @@ export const Navbar: React.FC<NavbarProps> = ({ currentPath, navigate }) => {
           </button>
 
           <button
-            onClick={() => navigate('/')}
+            onClick={() => navigate('/app')}
             className="text-xs sm:text-sm font-medium px-3.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-700 text-white transition-colors flex items-center gap-1.5 shadow-sm shadow-blue-600/20"
           >
             <Plus className="w-3.5 h-3.5" />

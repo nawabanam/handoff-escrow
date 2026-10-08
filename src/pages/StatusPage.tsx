@@ -5,6 +5,7 @@ import { doc, onSnapshot } from 'firebase/firestore';
 import { HorizontalStepper } from '../components/HorizontalStepper';
 import { StatusBadge } from '../components/StatusBadge';
 import { CancelTradeButton } from '../components/CancelTradeButton';
+import { TradeQRCode } from '../components/TradeQRCode';
 import {
   ShieldCheck,
   Package,
@@ -184,9 +185,12 @@ export const StatusPage: React.FC<StatusPageProps> = ({ tradeId, navigate }) => 
             />
           )}
 
+          {/* In-Person QR Code Quick Trigger */}
+          <TradeQRCode trade={trade} compact={true} />
+
           <button
             onClick={handleShare}
-            className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs sm:text-sm font-medium rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors"
+            className="px-3.5 py-1.5 bg-white border border-slate-200 hover:border-slate-300 text-slate-700 text-xs sm:text-sm font-medium rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             {copied ? (
               <>
@@ -318,6 +322,11 @@ export const StatusPage: React.FC<StatusPageProps> = ({ tradeId, navigate }) => 
             )}
           </div>
         </div>
+      </div>
+
+      {/* In-Person Trade QR Code Card */}
+      <div className="mb-6">
+        <TradeQRCode trade={trade} />
       </div>
 
       {/* Role Navigation Shortcuts */}
